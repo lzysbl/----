@@ -30,12 +30,14 @@ class Enemy:
             self.hp = 50
             self.max_hp = 50
             self.attack_power = 10
+            self.attack_damage = 10  # 攻击伤害
             self.exp_reward = 50
             self.level = 1
         elif self.enemy_type == "elite":
             self.hp = 100
             self.max_hp = 100
             self.attack_power = 20
+            self.attack_damage = 20  # 攻击伤害
             self.exp_reward = 100
             self.level = 2
             self.COLOR = (150, 0, 0)  # 深红色
@@ -44,6 +46,7 @@ class Enemy:
             self.hp = 200
             self.max_hp = 200
             self.attack_power = 35
+            self.attack_damage = 35  # 攻击伤害
             self.exp_reward = 200
             self.level = 3
             self.COLOR = (100, 0, 0)  # 暗红色
@@ -78,7 +81,7 @@ class Enemy:
         # 状态转换逻辑
         if distance <= self.sight_range:
             self.player_last_seen = (player.x, player.y)
-            if distance <= 35:  # 近距离攻击
+            if distance <= 40:  # 攻击距离
                 self.ai_state = "attack"
             else:
                 self.ai_state = "chase"
@@ -95,6 +98,18 @@ class Enemy:
             self.chase_player(player, game_map)
         elif self.ai_state == "attack":
             self.attack_player(player)
+
+    def approach_player(self, player, game_map=None):
+        """靠近玩家但不攻击"""
+        target_x, target_y = player.x, player.y
+        distance = self.distance_to_player(player)
+        
+        # 如果距离足够近，停止移动
+        if distance <= 35:
+            return
+        
+        # 向玩家靠近
+        self.move_towards_target(target_x, target_y, game_map)
 
     def patrol(self, game_map=None):
         """巡逻行为"""
@@ -145,8 +160,8 @@ class Enemy:
         self.move_towards_target(target_x, target_y, game_map)
     
     def move_towards_target(self, target_x, target_y, game_map=None):
-        """向目标移动"""
-        # 向目标方向移动
+        """向目标移动 - 改进版本防止卡墙"""
+        # 计算移动方向
         dx = target_x - self.x
         dy = target_y - self.y
         distance = math.sqrt(dx**2 + dy**2)
@@ -156,18 +171,39 @@ class Enemy:
             dx /= distance
             dy /= distance
             
-            # 计算新位置
-            new_x = self.x + dx * self.SPEED * 1.2  # 追击时稍微快一点
-            new_y = self.y + dy * self.SPEED * 1.2
+            # 计算移动步长
+            if hasattr(self, 'ai_state') and self.ai_state == "chase":
+                speed = self.SPEED * 1.2  # 追击时稍快
+            else:
+                speed = self.SPEED
             
-            # 碰撞检测
+            # 先尝试直接移动
+            new_x = self.x + dx * speed
+            new_y = self.y + dy * speed
+            
             if game_map:
-                # 尝试X轴移动
-                if game_map.can_move_to(new_x, self.y, self.width, self.height):
+                # 检查是否可以直接移动到目标位置
+                if game_map.can_move_to(new_x, new_y, self.width, self.height):
                     self.x = new_x
-                # 尝试Y轴移动
-                if game_map.can_move_to(self.x, new_y, self.width, self.height):
                     self.y = new_y
+                else:
+                    # 如果不能直接移动，尝试分别在X和Y轴上移动
+                    can_move_x = game_map.can_move_to(new_x, self.y, self.width, self.height)
+                    can_move_y = game_map.can_move_to(self.x, new_y, self.width, self.height)
+                    
+                    if can_move_x and can_move_y:
+                        # 优先选择移动距离更大的方向
+                        if abs(dx) > abs(dy):
+                            self.x = new_x
+                        else:
+                            self.y = new_y
+                    elif can_move_x:
+                        self.x = new_x
+                    elif can_move_y:
+                        self.y = new_y
+                    else:
+                        # 如果都不能移动，尝试避障
+                        self.try_avoid_wall(game_map)
             else:
                 self.x = new_x
                 self.y = new_y
@@ -177,8 +213,9 @@ class Enemy:
         self.y = max(self.height//2, min(600 - self.height//2, self.y))
 
     def attack_player(self, player):
-        """攻击玩家"""
-        # 停止移动，准备攻击
+        """攻击玩家状态 - 停止移动，准备攻击"""
+        # 在攻击状态下，敌人停止移动
+        # 实际的攻击逻辑在主循环中处理
         pass
 
     def can_attack(self):
@@ -246,3 +283,20 @@ class Enemy:
 
     def get_rect(self):
         return pygame.Rect(self.x - self.width//2, self.y - self.height//2, self.width, self.height)
+
+    def try_avoid_wall(self, game_map):
+        """尝试避开墙体"""
+        # 尝试8个方向的移动
+        directions = [
+            (1, 0), (0, 1), (-1, 0), (0, -1),  # 4个主方向
+            (1, 1), (1, -1), (-1, 1), (-1, -1)  # 4个对角方向
+        ]
+        
+        for dx, dy in directions:
+            new_x = self.x + dx * self.SPEED
+            new_y = self.y + dy * self.SPEED
+            
+            if game_map.can_move_to(new_x, new_y, self.width, self.height):
+                self.x = new_x
+                self.y = new_y
+                break

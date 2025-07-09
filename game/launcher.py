@@ -35,10 +35,13 @@ def main():
     print("3. 按键测试 - 测试输入法兼容性")
     print("4. WASD移动测试 - 测试新的移动控制")
     print("5. 墙体碰撞测试 - 测试墙体碰撞功能")
-    print("6. 性能测试 - 数据结构查找性能对比")
+    print("6. 敌人行为测试 - 测试敌人AI行为")
+    print("7. 攻击间隔测试 - 测试敌人攻击间隔")
+    print("8. 完整功能测试 - 测试背包系统和敌人生成")
+    print("9. 性能测试 - 数据结构查找性能对比")
     
     try:
-        choice = input("\n请选择 (1-6, 默认1): ").strip()
+        choice = input("\n请选择 (1-9, 默认1): ").strip()
         if not choice:
             choice = "1"
         
@@ -63,6 +66,18 @@ def main():
             import test_wall_collision
             test_wall_collision.test_wall_collision()
         elif choice == "6":
+            print("\n启动敌人行为测试...")
+            import test_enemy_behavior
+            test_enemy_behavior.test_enemy_behavior()
+        elif choice == "7":
+            print("\n启动攻击间隔测试...")
+            import test_attack_interval
+            test_attack_interval.test_attack_interval()
+        elif choice == "8":
+            print("\n启动完整功能测试...")
+            import test_full_features
+            test_full_features.test_full_features()
+        elif choice == "9":
             print("\n启动性能测试...")
             sys.path.append('..')
             import main as perf_test

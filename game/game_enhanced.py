@@ -11,6 +11,8 @@ from font_manager import FontManager
 from skill_system import SkillSystem
 from equipment import EquipmentSystem, LootSystem
 from save_system import SaveSystem, GameMenu
+from inventory import InventoryUI
+from enemy_spawner import EnemySpawner
 
 # 游戏配置
 SCREEN_WIDTH = 800
@@ -34,15 +36,16 @@ class Game:
         self.enemies = []
         self.items = []
         self.game_state = None
+        self.inventory_ui = None
         
     def initialize_game(self, load_save=False):
         """初始化游戏"""
         self.game_map = GameMap()
         self.player = Player(x=SCREEN_WIDTH//2, y=SCREEN_HEIGHT//2)
-        self.enemies = [
-            Enemy(x=100, y=100, enemy_type="basic"), 
-            Enemy(x=700, y=500, enemy_type="basic")
-        ]
+        
+        # 使用智能生成系统生成敌人
+        self.enemies = EnemySpawner.spawn_enemies(self.game_map, count=2, player_pos=(self.player.x, self.player.y))
+        
         self.items = [
             Item(name="Gold", x=200, y=200),
             Item(name="Potion", x=400, y=300),
@@ -51,6 +54,9 @@ class Game:
             Item(name="Gold", x=500, y=350)
         ]
         self.game_state = GameState()
+        
+        # 创建背包界面
+        self.inventory_ui = InventoryUI(self.screen, self.font)
         
         if load_save:
             save_data = SaveSystem.load_game()
@@ -107,6 +113,18 @@ class Game:
                     self.game_state_mode = "paused"
                     self.menu.menu_state = "pause"
                     self.menu.selected_option = 0
+                elif event.key == pygame.K_TAB:
+                    # TAB键打开背包
+                    self.inventory_ui.toggle()
+                    if self.inventory_ui.is_open:
+                        self.game_state.add_battle_message("背包已打开")
+                    else:
+                        self.game_state.add_battle_message("背包已关闭")
+                # 背包打开时优先处理背包输入
+                elif self.inventory_ui.is_open:
+                    result = self.inventory_ui.handle_input(event, self.player)
+                    if result and result != "close":
+                        self.game_state.add_battle_message(result)
                 elif event.key == pygame.K_h:
                     # H键使用血瓶
                     if "Potion" in self.player.inventory and self.player.hp < self.player.max_hp:
@@ -137,6 +155,12 @@ class Game:
                 # WASD移动
                 elif event.key in [pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d]:
                     self.player.handle_keydown_movement(event.key, self.game_map)
+        
+            # 处理背包鼠标事件
+            elif self.inventory_ui.is_open:
+                result = self.inventory_ui.handle_input(event, self.player)
+                if result and result != "close":
+                    self.game_state.add_battle_message(result)
 
     def update_game(self):
         """更新游戏状态"""
@@ -153,7 +177,7 @@ class Game:
         
         # 检查波次完成
         if self.game_state.check_wave_complete(self.enemies):
-            new_enemies = self.game_state.spawn_new_wave()
+            new_enemies = self.game_state.spawn_new_wave(self.game_map, (self.player.x, self.player.y))
             self.enemies.extend(new_enemies)
             self.game_state.add_battle_message(f"第 {self.game_state.wave_number} 波开始！")
         
@@ -178,24 +202,25 @@ class Game:
                         self.handle_enemy_death(enemy)
                     break
         
-        # 处理敌人与玩家的近战
+        # 处理敌人AI更新和攻击
         for enemy in self.enemies[:]:
             enemy.update(self.player, self.game_map)  # 传入game_map进行墙体碰撞检测
-            # 玩家与敌人碰撞检测
-            if self.player.get_rect().colliderect(enemy.get_rect()):
-                if enemy.can_attack():
-                    battle_results = BattleSystem.battle_result(self.player, enemy)
-                    for result in battle_results:
-                        self.game_state.add_battle_message(result)
-                    
-                    if not enemy.is_alive():
-                        self.handle_enemy_death(enemy)
-                        
-                    if not self.player.is_alive():
-                        self.game_state.add_battle_message("玩家被击败，游戏结束")
-                        self.game_state.state = "game_over"
-                        self.game_state_mode = "menu"
-                        self.menu.menu_state = "main"
+            
+            # 检查敌人是否可以攻击玩家（近距离攻击，不是碰撞攻击）
+            distance = enemy.distance_to_player(self.player)
+            if distance <= 40 and enemy.can_attack():  # 近距离攻击
+                # 敌人攻击玩家
+                damage = enemy.attack_damage
+                self.player.hp -= damage
+                self.game_state.add_battle_message(f"敌人攻击你，造成{damage}点伤害！")
+                enemy.last_attack_time = pygame.time.get_ticks()
+                
+                # 检查玩家是否死亡
+                if not self.player.is_alive():
+                    self.game_state.add_battle_message("玩家被击败，游戏结束")
+                    self.game_state.state = "game_over"
+                    self.game_state_mode = "menu"
+                    self.menu.menu_state = "main"
 
     def handle_enemy_death(self, enemy):
         """处理敌人死亡"""
@@ -246,6 +271,9 @@ class Game:
         self.player.draw(self.screen)
         draw_hud(self.screen, self.player, self.font)
         draw_game_info(self.screen, self.game_state, self.font)
+        
+        # 绘制背包界面（如果打开）
+        self.inventory_ui.draw(self.player)
         
         # 只在游戏模式下调用display.flip()
         if self.game_state_mode == "playing":
