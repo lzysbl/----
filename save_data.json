@@ -1,0 +1,34 @@
+{
+  "player": {
+    "x": 496,
+    "y": 518,
+    "hp": 160,
+    "max_hp": 160,
+    "mp": 112,
+    "max_mp": 130,
+    "level": 4,
+    "exp": 0,
+    "gold": 172,
+    "attack_power": 50,
+    "inventory": [
+      "Potion",
+      "Potion",
+      "Potion",
+      "Potion",
+      "Potion",
+      "Potion"
+    ],
+    "equipped": {
+      "weapon": "iron_sword",
+      "armor": null,
+      "accessory": null
+    },
+    "base_defense": 0
+  },
+  "game_state": {
+    "wave_number": 3,
+    "enemies_killed": 10,
+    "state": "playing"
+  },
+  "timestamp": 69663
+}

@@ -36,7 +36,16 @@ class BattleSystem:
         # 敌人反击（如果还活着）
         if enemy.is_alive():
             enemy_damage = BattleSystem.calculate_damage(enemy.attack_power)
-            player.hp -= enemy_damage
-            results.append("敌人反击")
+            
+            # 计算玩家的有效防御力
+            player_defense = player.get_effective_defense() if hasattr(player, 'get_effective_defense') else 0
+            final_damage = max(1, enemy_damage - player_defense)
+            
+            player.hp -= final_damage
+            
+            if player_defense > 0:
+                results.append(f"敌人反击，护盾减少{player_defense}点伤害")
+            else:
+                results.append("敌人反击")
         
         return results

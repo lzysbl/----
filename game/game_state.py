@@ -37,9 +37,18 @@ class GameState:
         new_enemies = []
         enemy_count = 2 + self.wave_number  # 每波增加敌人数量
         
-        for _ in range(enemy_count):
+        for i in range(enemy_count):
             x = random.randint(50, 750)
             y = random.randint(50, 550)
-            new_enemies.append(Enemy(x, y))
+            
+            # 根据波次决定敌人类型
+            if self.wave_number >= 5 and i == 0:  # 从第5波开始，每波有一个boss
+                enemy_type = "boss"
+            elif self.wave_number >= 3 and random.random() < 0.3:  # 从第3波开始，30%概率生成精英
+                enemy_type = "elite"
+            else:
+                enemy_type = "basic"
+            
+            new_enemies.append(Enemy(x, y, enemy_type))
             
         return new_enemies

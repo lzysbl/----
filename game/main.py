@@ -8,13 +8,15 @@ from hud import draw_hud, draw_game_info
 from battle import BattleSystem
 from game_state import GameState
 from font_manager import FontManager
+from skill_system import SkillSystem
+from equipment import EquipmentSystem, LootSystem
 
 # 游戏配置
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 FPS = 60
 
-def handle_events(player, game_state):
+def handle_events(player, game_state, game_map):
     """处理系统和用户事件"""
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -28,11 +30,25 @@ def handle_events(player, game_state):
                     heal_amount = min(30, player.max_hp - player.hp)
                     player.hp += heal_amount
                     player.inventory.remove("Potion")
-            # 移动也可以用事件处理作为备选
-            elif event.key in [pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN]:
-                player.handle_keydown_movement(event.key)
+            # 技能快捷键
+            elif event.key == pygame.K_q:
+                # Q键 - 火球术
+                mouse_pos = pygame.mouse.get_pos()
+                if SkillSystem.cast_skill(player, "fireball", mouse_pos):
+                    game_state.add_battle_message("火球术！")
+            elif event.key == pygame.K_e:
+                # E键 - 治疗术
+                if SkillSystem.cast_skill(player, "heal"):
+                    game_state.add_battle_message("治疗术！")
+            elif event.key == pygame.K_r:
+                # R键 - 护盾术
+                if SkillSystem.cast_skill(player, "shield"):
+                    game_state.add_battle_message("护盾术！")
+            # WASD移动键
+            elif event.key in [pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d]:
+                player.handle_keydown_movement(event.key, game_map)
 
-def update_game(player, enemies, items, game_state):
+def update_game(player, enemies, items, game_state, game_map):
     """更新玩家、敌人、物品状态并执行碰撞和战斗逻辑"""
     # 物品拾取检测
     for item in items[:]:
@@ -40,8 +56,8 @@ def update_game(player, enemies, items, game_state):
             player.pick_up(item)
             items.remove(item)
     
-    # 更新玩家
-    player.update()
+    # 更新玩家 - 传入game_map进行墙体碰撞检测
+    player.update(game_map)
     
     # 检查波次完成
     if game_state.check_wave_complete(enemies):
@@ -53,20 +69,70 @@ def update_game(player, enemies, items, game_state):
     game_state.update_messages()
     
     # 战斗逻辑
-    handle_combat(player, enemies, game_state)
+    handle_combat(player, enemies, items, game_state, game_map)
 
-def handle_combat(player, enemies, game_state):
+def handle_combat(player, enemies, items, game_state, game_map):
     """处理战斗逻辑"""
+    # 处理玩家投射物与敌人的碰撞
+    for projectile in player.projectiles[:]:
+        for enemy in enemies:
+            if enemy.get_rect().collidepoint(projectile["x"], projectile["y"]):
+                # 投射物击中敌人
+                enemy.hp -= projectile["damage"]
+                player.projectiles.remove(projectile)
+                game_state.add_battle_message(f"火球术击中敌人，造成{projectile['damage']}点伤害！")
+                
+                if not enemy.is_alive():
+                    # 敌人死亡，生成战利品
+                    loot = LootSystem.generate_loot(enemy.level)
+                    for loot_item in loot:
+                        if loot_item["type"] == "gold":
+                            player.gold += loot_item["amount"]
+                            game_state.add_battle_message(f"获得 {loot_item['amount']} 金币！")
+                        elif loot_item["type"] == "item":
+                            player.inventory.append(loot_item["name"])
+                            game_state.add_battle_message(f"获得 {loot_item['name']}！")
+                        elif loot_item["type"] == "equipment":
+                            # 创建装备物品
+                            equipment_item = Item(name=f"装备_{loot_item['id']}", x=enemy.x, y=enemy.y)
+                            equipment_item.equipment_id = loot_item["id"]
+                            items.append(equipment_item)
+                            game_state.add_battle_message("掉落装备！")
+                    
+                    game_state.add_battle_message("敌人被击败！")
+                    game_state.enemies_killed += 1
+                    player.gain_exp(enemy.exp_reward)
+                    enemies.remove(enemy)
+                break
+    
+    # 处理敌人与玩家的近战
     for enemy in enemies:
-        enemy.update()
+        enemy.update(player, game_map)  # 传递玩家对象和地图给敌人更新AI
         # 玩家与敌人碰撞检测
         if player.get_rect().colliderect(enemy.get_rect()):
+            # 检查攻击冷却，避免连续攻击
             if enemy.can_attack():
                 battle_results = BattleSystem.battle_result(player, enemy)
                 for result in battle_results:
                     game_state.add_battle_message(result)
                 
                 if not enemy.is_alive():
+                    # 敌人死亡，生成战利品
+                    loot = LootSystem.generate_loot(enemy.level)
+                    for loot_item in loot:
+                        if loot_item["type"] == "gold":
+                            player.gold += loot_item["amount"]
+                            game_state.add_battle_message(f"获得 {loot_item['amount']} 金币！")
+                        elif loot_item["type"] == "item":
+                            player.inventory.append(loot_item["name"])
+                            game_state.add_battle_message(f"获得 {loot_item['name']}！")
+                        elif loot_item["type"] == "equipment":
+                            # 创建装备物品
+                            equipment_item = Item(name=f"装备_{loot_item['id']}", x=enemy.x, y=enemy.y)
+                            equipment_item.equipment_id = loot_item["id"]
+                            items.append(equipment_item)
+                            game_state.add_battle_message("掉落装备！")
+                    
                     game_state.add_battle_message("敌人被击败！")
                     game_state.enemies_killed += 1
                     player.gain_exp(enemy.exp_reward)
@@ -104,7 +170,10 @@ def main():
     # 创建游戏实体
     game_map = GameMap()
     player = Player(x=SCREEN_WIDTH//2, y=SCREEN_HEIGHT//2)
-    enemies = [Enemy(x=100, y=100), Enemy(x=700, y=500)]
+    enemies = [
+        Enemy(x=100, y=100, enemy_type="basic"), 
+        Enemy(x=700, y=500, enemy_type="basic")
+    ]
     items = [
         Item(name="Gold", x=200, y=200),
         Item(name="Potion", x=400, y=300),
@@ -116,8 +185,8 @@ def main():
 
     # 游戏主循环
     while True:
-        handle_events(player, game_state)
-        update_game(player, enemies, items, game_state)
+        handle_events(player, game_state, game_map)
+        update_game(player, enemies, items, game_state, game_map)
         render(screen, game_map, player, enemies, items, font, game_state)
         clock.tick(FPS)
 
