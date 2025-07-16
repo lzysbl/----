@@ -62,6 +62,18 @@ def handle_events(player, game_state, game_map, inventory_ui):
             elif event.key in [pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d]:
                 player.handle_keydown_movement(event.key, game_map)
         
+        # 处理鼠标点击事件
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1 and not inventory_ui.is_open:  # 左键点击且背包未打开
+                # 普通攻击
+                mouse_pos = pygame.mouse.get_pos()
+                handle_player_attack(mouse_pos, player, enemies, game_state)
+            elif inventory_ui.is_open:
+                # 背包打开时处理背包鼠标事件
+                result = inventory_ui.handle_input(event, player)
+                if result and result != "close":
+                    game_state.add_battle_message(result)
+        
         # 处理背包鼠标事件
         elif inventory_ui.is_open:
             result = inventory_ui.handle_input(event, player)
@@ -162,6 +174,53 @@ def render(screen, game_map, player, enemies, items, font, game_state, inventory
     
     pygame.display.flip()
 
+def handle_player_attack(mouse_pos, player, enemies, game_state):
+    """处理玩家普通攻击"""
+    # 检查攻击距离
+    attack_range = 50
+    player_center = (player.x, player.y)
+    
+    # 检查鼠标点击位置是否在攻击范围内
+    distance = ((mouse_pos[0] - player_center[0]) ** 2 + (mouse_pos[1] - player_center[1]) ** 2) ** 0.5
+    if distance > attack_range:
+        game_state.add_battle_message("目标太远了！")
+        return
+    
+    # 检查是否击中敌人
+    for enemy in enemies[:]:
+        enemy_rect = enemy.get_rect()
+        if enemy_rect.collidepoint(mouse_pos):
+            # 计算攻击伤害
+            base_damage = getattr(player, 'attack_power', 20)
+            equipment_bonus = getattr(player, 'attack', 0) - 20  # 装备加成
+            total_damage = base_damage + equipment_bonus
+            
+            # 攻击敌人
+            enemy.hp -= total_damage
+            game_state.add_battle_message(f"攻击敌人，造成{total_damage}点伤害！")
+            
+            # 检查敌人是否死亡
+            if not enemy.is_alive():
+                # 处理敌人死亡逻辑
+                from equipment import LootSystem
+                loot = LootSystem.generate_loot(enemy.level)
+                for loot_item in loot:
+                    if loot_item["type"] == "gold":
+                        player.gold += loot_item["amount"]
+                        game_state.add_battle_message(f"获得 {loot_item['amount']} 金币！")
+                    elif loot_item["type"] == "item":
+                        player.inventory.append(loot_item["name"])
+                        game_state.add_battle_message(f"获得 {loot_item['name']}！")
+                
+                game_state.add_battle_message("敌人被击败！")
+                game_state.enemies_killed += 1
+                player.gain_exp(enemy.exp_reward)
+                enemies.remove(enemy)
+            return
+    
+    # 没有击中敌人
+    game_state.add_battle_message("攻击落空！")
+
 def main():
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -177,6 +236,15 @@ def main():
     
     # 使用智能生成系统生成敌人
     enemies = EnemySpawner.spawn_enemies(game_map, count=2, player_pos=(player.x, player.y))
+    
+    # 给玩家一些初始装备用于测试
+    player.inventory.extend([
+        "装备_iron_sword", 
+        "装备_leather_armor", 
+        "装备_magic_ring",
+        "Potion", 
+        "Potion"
+    ])
     
     items = [
         Item(name="Gold", x=200, y=200),

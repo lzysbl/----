@@ -53,6 +53,17 @@ class Game:
             Item(name="Potion", x=300, y=450),
             Item(name="Gold", x=500, y=350)
         ]
+        
+        # 给玩家一些初始装备用于测试
+        if not load_save:
+            self.player.inventory.extend([
+                "装备_iron_sword", 
+                "装备_leather_armor", 
+                "装备_magic_ring",
+                "Potion", 
+                "Potion"
+            ])
+        
         self.game_state = GameState()
         
         # 创建背包界面
@@ -155,6 +166,18 @@ class Game:
                 # WASD移动
                 elif event.key in [pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d]:
                     self.player.handle_keydown_movement(event.key, self.game_map)
+        
+            # 处理鼠标点击事件
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1 and not self.inventory_ui.is_open:  # 左键点击且背包未打开
+                    # 普通攻击
+                    mouse_pos = pygame.mouse.get_pos()
+                    self.handle_player_attack(mouse_pos)
+                elif self.inventory_ui.is_open:
+                    # 背包打开时处理背包鼠标事件
+                    result = self.inventory_ui.handle_input(event, self.player)
+                    if result and result != "close":
+                        self.game_state.add_battle_message(result)
         
             # 处理背包鼠标事件
             elif self.inventory_ui.is_open:
@@ -292,6 +315,39 @@ class Game:
             
             self.render()
             self.clock.tick(FPS)
+
+    def handle_player_attack(self, mouse_pos):
+        """处理玩家普通攻击"""
+        # 检查攻击距离
+        attack_range = 50
+        player_center = (self.player.x, self.player.y)
+        
+        # 检查鼠标点击位置是否在攻击范围内
+        distance = ((mouse_pos[0] - player_center[0]) ** 2 + (mouse_pos[1] - player_center[1]) ** 2) ** 0.5
+        if distance > attack_range:
+            self.game_state.add_battle_message("目标太远了！")
+            return
+        
+        # 检查是否击中敌人
+        for enemy in self.enemies[:]:
+            enemy_rect = enemy.get_rect()
+            if enemy_rect.collidepoint(mouse_pos):
+                # 计算攻击伤害
+                base_damage = getattr(self.player, 'attack_power', 20)
+                equipment_bonus = getattr(self.player, 'attack', 0) - 20  # 装备加成
+                total_damage = base_damage + equipment_bonus
+                
+                # 攻击敌人
+                enemy.hp -= total_damage
+                self.game_state.add_battle_message(f"攻击敌人，造成{total_damage}点伤害！")
+                
+                # 检查敌人是否死亡
+                if not enemy.is_alive():
+                    self.handle_enemy_death(enemy)
+                return
+        
+        # 没有击中敌人
+        self.game_state.add_battle_message("攻击落空！")
 
 if __name__ == '__main__':
     game = Game()

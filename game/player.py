@@ -171,16 +171,17 @@ class Player:
         if item.name == "Gold":
             self.gold += 10
         elif hasattr(item, 'equipment_id'):
-            # 装备物品
-            from equipment import EquipmentSystem
+            # 装备物品先放入背包，不自动装备
             equipment_id = item.equipment_id
-            if EquipmentSystem.equip_item(self, equipment_id):
-                # 成功装备
-                equipment = EquipmentSystem.get_all_equipment()[equipment_id]
-                return f"装备了 {equipment.name}！"
+            self.inventory.append(f"装备_{equipment_id}")
+            
+            # 获取装备信息用于显示
+            from equipment import EquipmentSystem
+            equipment = EquipmentSystem.get_all_equipment().get(equipment_id)
+            if equipment:
+                return f"获得了 {equipment.name}！已放入背包"
             else:
-                # 装备失败（等级不足等）
-                return "无法装备该物品！"
+                return "获得了装备！已放入背包"
         else:
             self.inventory.append(item.name)
 

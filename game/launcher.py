@@ -38,10 +38,14 @@ def main():
     print("6. 敌人行为测试 - 测试敌人AI行为")
     print("7. 攻击间隔测试 - 测试敌人攻击间隔")
     print("8. 完整功能测试 - 测试背包系统和敌人生成")
-    print("9. 性能测试 - 数据结构查找性能对比")
+    print("9. 装备替换测试 - 测试装备替换不丢失")
+    print("10. 装备掉落测试 - 测试装备掉落到背包")
+    print("11. 扩展装备测试 - 测试新增装备和掉落系统")
+    print("12. 背包新功能测试 - 测试点击选中、丢弃、摧毁功能")
+    print("13. 性能测试 - 数据结构查找性能对比")
     
     try:
-        choice = input("\n请选择 (1-9, 默认1): ").strip()
+        choice = input("\n请选择 (1-13, 默认1): ").strip()
         if not choice:
             choice = "1"
         
@@ -78,6 +82,22 @@ def main():
             import test_full_features
             test_full_features.test_full_features()
         elif choice == "9":
+            print("\n启动装备替换测试...")
+            import test_equipment_fix
+            test_equipment_fix.test_equipment_replacement()
+        elif choice == "10":
+            print("\n启动装备掉落测试...")
+            import test_drop_to_inventory
+            test_drop_to_inventory.test_equipment_drop_to_inventory()
+        elif choice == "11":
+            print("\n启动扩展装备测试...")
+            import test_expanded_equipment
+            test_expanded_equipment.test_expanded_equipment()
+        elif choice == "12":
+            print("\n启动背包新功能测试...")
+            import test_inventory_new_features
+            test_inventory_new_features.test_inventory_new_features()
+        elif choice == "13":
             print("\n启动性能测试...")
             sys.path.append('..')
             import main as perf_test
