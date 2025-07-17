@@ -1,5 +1,11 @@
 import pygame
-from skill_system import SkillSystem
+import sys
+import os
+
+# 添加当前目录到Python路径
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from systems.skill_system import SkillSystem
 
 
 def draw_hud(surface, player, font):
@@ -36,16 +42,31 @@ def draw_hud(surface, player, font):
     surface.blit(mp_text, (220, mp_bar_y + 2))
     
     # 绘制等级和经验
-    level_text = font.render(f"Lv: {player.level}  EXP: {player.exp}/{player.level * 100}", True, (255, 255, 255))
+    level_text = font.render(f"等级: {player.level}  经验: {player.exp}/{player.level * 100}", True, (255, 255, 255))
     surface.blit(level_text, (10, 60))
     
     # 绘制金币
-    gold_text = font.render(f"Gold: {player.gold}", True, (255, 215, 0))
+    gold_text = font.render(f"金币: {player.gold}", True, (255, 215, 0))
     surface.blit(gold_text, (10, 80))
 
-    # 绘制背包物品
-    inv_str = ", ".join(player.inventory) if player.inventory else "空"
-    inv_text = font.render(f"背包: {inv_str}", True, (255, 255, 255))
+    # 绘制背包物品 - 只显示消耗品叠加信息
+    consumables = {}
+    for item in player.inventory:
+        if not item.startswith("装备_"):
+            consumables[item] = consumables.get(item, 0) + 1
+    
+    if consumables:
+        consumable_strs = []
+        for item, count in consumables.items():
+            if count > 1:
+                consumable_strs.append(f"{item}x{count}")
+            else:
+                consumable_strs.append(item)
+        inv_str = ", ".join(consumable_strs)
+    else:
+        inv_str = "空"
+    
+    inv_text = font.render(f"物品: {inv_str}", True, (255, 255, 255))
     surface.blit(inv_text, (10, 100))
     
     # 绘制技能快捷键和冷却时间

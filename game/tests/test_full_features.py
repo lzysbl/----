@@ -6,12 +6,17 @@
 
 import pygame
 import sys
-from map import GameMap
-from player import Player
-from enemy_spawner import EnemySpawner
-from inventory import InventoryUI
-from font_manager import FontManager
-from equipment import EquipmentSystem
+import os
+
+# 添加当前目录到Python路径
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from utils.map import GameMap
+from entities.player import Player
+from entities.enemy_spawner import EnemySpawner
+from systems.inventory import InventoryUI
+from ui.font_manager import FontManager
+from systems.equipment import EquipmentSystem
 
 def test_full_features():
     """测试完整功能"""
@@ -25,7 +30,7 @@ def test_full_features():
     player = Player(x=400, y=300)
     
     # 为玩家添加一些测试物品
-    player.inventory = ["Potion", "装备_sword_iron", "装备_armor_leather", "Gold"]
+    player.inventory = ["血瓶", "装备_sword_iron", "装备_armor_leather", "Gold"]
     
     # 使用字体管理器
     font = FontManager.get_chinese_font(20)

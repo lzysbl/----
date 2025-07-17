@@ -168,15 +168,39 @@ class Player:
 
     def pick_up(self, item):
         """拾取物品，并加入背包"""
+        # 检查是否是叠加物品（只有血瓶等消耗品可以叠加）
+        is_stackable = item.name in ["血瓶", "Gold"]
+        
+        # 如果不是叠加物品，或者是叠加物品但背包中没有，需要检查显示槽位
+        if not is_stackable or (is_stackable and item.name not in self.inventory):
+            # 计算显示列表长度（去重后的物品数量）
+            display_items = []
+            seen_items = set()
+            for inv_item in self.inventory:
+                if inv_item not in seen_items:
+                    display_items.append(inv_item)
+                    seen_items.add(inv_item)
+            
+            # 检查背包显示槽位是否已满
+            if len(display_items) >= 20:  # 背包最大显示容量
+                return "背包已满！"
+        
         if item.name == "Gold":
             self.gold += 10
+        elif item.name == "血瓶":
+            # 血瓶最多携带10个
+            potion_count = self.inventory.count("血瓶")
+            if potion_count >= 10:
+                return "血瓶已满！(最多10个)"
+            self.inventory.append(item.name)
+            return "拾取了血瓶！"
         elif hasattr(item, 'equipment_id'):
-            # 装备物品先放入背包，不自动装备
+            # 装备物品每个都占用独立槽位，不叠加
             equipment_id = item.equipment_id
             self.inventory.append(f"装备_{equipment_id}")
             
             # 获取装备信息用于显示
-            from equipment import EquipmentSystem
+            from systems.equipment import EquipmentSystem
             equipment = EquipmentSystem.get_all_equipment().get(equipment_id)
             if equipment:
                 return f"获得了 {equipment.name}！已放入背包"
@@ -184,6 +208,7 @@ class Player:
                 return "获得了装备！已放入背包"
         else:
             self.inventory.append(item.name)
+            return f"拾取了 {item.name}！"
 
     def handle_special_input(self):
         """处理特殊按键（如使用物品）"""
@@ -191,10 +216,20 @@ class Player:
         
         # H键使用血瓶 - 只在按下瞬间触发
         if keys[pygame.K_h] and not self.h_key_pressed:
-            self.use_potion()
+            result = self.use_potion()
             self.h_key_pressed = True
+            if result:
+                return "使用血瓶恢复生命！"
+            elif "血瓶" not in self.inventory:
+                return "没有血瓶了！"
+            elif self.hp >= self.max_hp:
+                return "生命值已满！"
+            else:
+                return "血瓶冷却中..."
         elif not keys[pygame.K_h]:
             self.h_key_pressed = False
+        
+        return None
 
     def gain_exp(self, exp_amount):
         """获得经验值并检查是否升级"""
@@ -219,11 +254,11 @@ class Player:
         if current_time - self.last_heal_time < 2000:  # 2秒冷却
             return False
             
-        if "Potion" in self.inventory:
+        if "血瓶" in self.inventory:
             heal_amount = min(30, self.max_hp - self.hp)
             if heal_amount > 0:  # 只有在需要治疗时才使用
                 self.hp += heal_amount
-                self.inventory.remove("Potion")
+                self.inventory.remove("血瓶")
                 self.last_heal_time = current_time
                 return True
             else:

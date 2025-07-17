@@ -33,7 +33,7 @@ class GameState:
         
     def spawn_new_wave(self, game_map=None, player_pos=None):
         """生成新的敌人波次"""
-        from enemy_spawner import EnemySpawner
+        from entities.enemy_spawner import EnemySpawner
         
         if game_map:
             # 使用智能生成系统
@@ -61,7 +61,7 @@ class GameState:
             return new_enemies
         else:
             # 后备方案：使用旧的生成方式
-            from enemy import Enemy
+            from entities.enemy import Enemy
             new_enemies = []
             enemy_count = 2 + self.wave_number  # 每波增加敌人数量
             

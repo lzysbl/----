@@ -6,9 +6,14 @@
 
 import pygame
 import sys
-from map import GameMap
-from enemy import Enemy
-from enemy_spawner import EnemySpawner
+import os
+
+# 添加当前目录到Python路径
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from utils.map import GameMap
+from entities.enemy import Enemy
+from entities.enemy_spawner import EnemySpawner
 
 def test_enemy_spawn():
     """测试敌人生成位置"""

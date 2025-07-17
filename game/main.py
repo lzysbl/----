@@ -40,10 +40,10 @@ def handle_events(player, game_state, game_map, inventory_ui):
             # 使用KEYDOWN事件处理所有按键，避免输入法干扰
             elif event.key == pygame.K_h:
                 # H键使用血瓶
-                if "Potion" in player.inventory and player.hp < player.max_hp:
+                if "血瓶" in player.inventory and player.hp < player.max_hp:
                     heal_amount = min(30, player.max_hp - player.hp)
                     player.hp += heal_amount
-                    player.inventory.remove("Potion")
+                    player.inventory.remove("血瓶")
             # 技能快捷键
             elif event.key == pygame.K_q:
                 # Q键 - 火球术
@@ -242,15 +242,15 @@ def main():
         "装备_iron_sword", 
         "装备_leather_armor", 
         "装备_magic_ring",
-        "Potion", 
-        "Potion"
+        "血瓶", 
+        "血瓶"
     ])
     
     items = [
         Item(name="Gold", x=200, y=200),
-        Item(name="Potion", x=400, y=300),
+        Item(name="血瓶", x=400, y=300),
         Item(name="Gold", x=600, y=150),
-        Item(name="Potion", x=300, y=450),
+        Item(name="血瓶", x=300, y=450),
         Item(name="Gold", x=500, y=350)
     ]
     game_state = GameState()

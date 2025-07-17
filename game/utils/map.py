@@ -136,3 +136,20 @@ class GameMap:
         
         # 如果找不到安全位置，返回中心位置
         return self.WIDTH * self.TILE_SIZE // 2, self.HEIGHT * self.TILE_SIZE // 2
+    
+    def is_position_near_walls(self, x, y):
+        """检查位置是否离墙体太近"""
+        grid_x = int(x // self.TILE_SIZE)
+        grid_y = int(y // self.TILE_SIZE)
+        
+        # 检查周围的网格
+        for dy in range(-1, 2):
+            for dx in range(-1, 2):
+                check_x = grid_x + dx
+                check_y = grid_y + dy
+                
+                if (0 <= check_x < self.WIDTH and 0 <= check_y < self.HEIGHT and 
+                    self.grid[check_y][check_x] == 1):
+                    return True
+        
+        return False

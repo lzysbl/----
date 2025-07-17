@@ -1,5 +1,11 @@
 import random
-from enemy import Enemy
+import sys
+import os
+
+# 添加当前目录到Python路径
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from entities.enemy import Enemy
 
 class EnemySpawner:
     """敌人生成器"""

@@ -1,32 +1,31 @@
 {
   "player": {
-    "x": 180,
-    "y": 396,
-    "hp": 100,
-    "max_hp": 160,
-    "mp": 66,
-    "max_mp": 160,
-    "level": 4,
-    "exp": 250,
-    "gold": 241,
-    "attack_power": 35,
+    "x": 680,
+    "y": 240,
+    "hp": 200,
+    "max_hp": 220,
+    "mp": 180,
+    "max_mp": 180,
+    "level": 6,
+    "exp": 100,
+    "gold": 416,
+    "attack_power": 45,
     "inventory": [
-      "Potion",
-      "Potion",
-      "Potion",
-      "Potion"
+      "血瓶",
+      "装备_iron_sword",
+      "装备_leather_armor"
     ],
     "equipped": {
-      "weapon": null,
-      "armor": null,
+      "weapon": "iron_sword",
+      "armor": "leather_armor",
       "accessory": "magic_ring"
     },
     "base_defense": 0
   },
   "game_state": {
-    "wave_number": 4,
-    "enemies_killed": 15,
+    "wave_number": 6,
+    "enemies_killed": 23,
     "state": "playing"
   },
-  "timestamp": 85097
+  "timestamp": 58640
 }

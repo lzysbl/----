@@ -35,7 +35,7 @@ def test_inventory_new_features():
         "装备_steel_sword",
         "装备_leather_armor",
         "装备_magic_ring",
-        "Potion",
+        "血瓶",
         "Gold",
         "装备_power_ring"
     ]

@@ -1,5 +1,11 @@
 import pygame
-from equipment import EquipmentSystem
+import sys
+import os
+
+# 添加当前目录到Python路径
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from systems.equipment import EquipmentSystem
 
 class InventoryUI:
     """背包界面类"""
@@ -17,6 +23,13 @@ class InventoryUI:
         self.border_color = (100, 100, 100)
         self.selected_color = (255, 255, 0)
         self.text_color = (255, 255, 255)
+        
+        # 装备图标配置
+        self.equipment_icons = {
+            "weapon": "⚔",
+            "armor": "🛡", 
+            "accessory": "💍"
+        }
         
         # 界面尺寸
         self.width = 600
@@ -38,6 +51,54 @@ class InventoryUI:
         self.slots_per_row = 8  # 减少每行物品数量
         self.inventory_rows = 4
     
+    def _get_display_items(self, player):
+        """获取显示物品列表（装备不叠加，消耗品叠加）"""
+        display_items = []
+        seen_items = set()
+        for item in player.inventory:
+            # 装备类物品不叠加，每个都显示
+            if item.startswith("装备_"):
+                display_items.append(item)
+            # 消耗品叠加显示
+            elif item not in seen_items:
+                display_items.append(item)
+                seen_items.add(item)
+        return display_items
+
+    def _get_actual_index(self, player, display_index):
+        """根据显示索引获取实际背包索引（考虑装备不叠加）"""
+        display_items = self._get_display_items(player)
+        if display_index < 0 or display_index >= len(display_items):
+            return 0
+        
+        # 直接返回显示列表中对应位置的物品在原始背包中的索引
+        target_item = display_items[display_index]
+        
+        # 统计在显示列表中该位置之前有多少个相同的装备
+        same_item_count = 0
+        for i in range(display_index):
+            if display_items[i] == target_item:
+                same_item_count += 1
+        
+        # 在原始背包中找到第 (same_item_count + 1) 个匹配的物品
+        found_count = 0
+        for i, item in enumerate(player.inventory):
+            if item == target_item:
+                if found_count == same_item_count:
+                    return i
+                found_count += 1
+        return 0
+
+    def _get_display_index(self, player, actual_index):
+        """根据实际索引获取显示索引"""
+        if actual_index < 0 or actual_index >= len(player.inventory):
+            return 0
+        target_item = player.inventory[actual_index]
+        display_items = self._get_display_items(player)
+        for i, item in enumerate(display_items):
+            if item == target_item:
+                return i
+        return 0
     def toggle(self):
         """切换背包开关状态"""
         self.is_open = not self.is_open
@@ -54,13 +115,17 @@ class InventoryUI:
                 self.toggle()
                 return "close"
             elif event.key == pygame.K_LEFT:
+                display_items = self._get_display_items(player)
                 self.selected_slot = max(0, self.selected_slot - 1)
             elif event.key == pygame.K_RIGHT:
-                self.selected_slot = min(len(player.inventory) - 1, self.selected_slot + 1)
+                display_items = self._get_display_items(player)
+                self.selected_slot = min(len(display_items) - 1, self.selected_slot + 1)
             elif event.key == pygame.K_UP:
+                display_items = self._get_display_items(player)
                 self.selected_slot = max(0, self.selected_slot - self.slots_per_row)
             elif event.key == pygame.K_DOWN:
-                self.selected_slot = min(len(player.inventory) - 1, self.selected_slot + self.slots_per_row)
+                display_items = self._get_display_items(player)
+                self.selected_slot = min(len(display_items) - 1, self.selected_slot + self.slots_per_row)
             elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
                 if self.selected_equipment_slot is not None:
                     return self.unequip_item(player, self.selected_equipment_slot)
@@ -94,24 +159,40 @@ class InventoryUI:
                         return f"选中了已装备的 {equipment.name}"
                 return "选中了空装备槽"
         
-        # 检查是否点击背包物品
-        for i, item in enumerate(player.inventory):
+        # 检查是否点击背包物品（使用统一的显示列表）
+        display_items = self._get_display_items(player)
+        item_counts = {}
+        
+        for item in player.inventory:
+            item_counts[item] = item_counts.get(item, 0) + 1
+        
+        for i, item in enumerate(display_items):
             slot_x = self.inventory_start_x + (i % self.slots_per_row) * (self.slot_size + 5)
             slot_y = self.inventory_start_y + (i // self.slots_per_row) * (self.slot_size + 5)
             
             if (slot_x <= mx <= slot_x + self.slot_size and 
                 slot_y <= my <= slot_y + self.slot_size):
-                # 只选中物品，不直接使用
-                self.selected_slot = i
+                self.selected_slot = i  # 直接使用显示列表索引
                 self.selected_equipment_slot = None  # 取消装备槽选择
-                return f"选中了 {item}"
+                
+                # 装备不显示数量，消耗品显示数量
+                if item.startswith("装备_"):
+                    return f"选中了 {item}"
+                else:
+                    count = item_counts[item]
+                    if count > 1:
+                        return f"选中了 {item} x{count}"
+                    else:
+                        return f"选中了 {item}"
         
         return None
     
     def use_selected_item(self, player):
-        """使用选中的物品"""
-        if 0 <= self.selected_slot < len(player.inventory):
-            return self.use_item(player, self.selected_slot)
+        """使用选中的物品（显示列表索引转实际索引）"""
+        display_items = self._get_display_items(player)
+        if 0 <= self.selected_slot < len(display_items):
+            actual_index = self._get_actual_index(player, self.selected_slot)
+            return self.use_item(player, actual_index)
         return None
     
     def use_item(self, player, index):
@@ -129,7 +210,7 @@ class InventoryUI:
                 return self.equip_item(player, equipment, index)
         
         # 检查是否是消耗品
-        elif item_name == "Potion":
+        elif item_name == "血瓶":
             if player.hp < player.max_hp:
                 heal_amount = min(30, player.max_hp - player.hp)
                 player.hp += heal_amount
@@ -283,19 +364,28 @@ class InventoryUI:
                 equipment_id = player.equipped[slot_type]
                 if equipment_id and equipment_id in self.equipment_list:
                     equipment = self.equipment_list[equipment_id]
+                    # 绘制装备图标
+                    icon = self.equipment_icons.get(slot_type, "⚡")
+                    icon_surface = self.font.render(icon, True, (255, 215, 0))
+                    icon_rect = icon_surface.get_rect(center=(sx + sw//2, sy + sh//2 - 10))
+                    self.screen.blit(icon_surface, icon_rect)
+                    
+                    # 绘制装备名称
                     name_surface = self.font.render(equipment.name[:4], True, self.text_color)
-                    text_rect = name_surface.get_rect(center=(sx + sw//2, sy + sh//2))
-                    self.screen.blit(name_surface, text_rect)
+                    name_rect = name_surface.get_rect(center=(sx + sw//2, sy + sh//2 + 15))
+                    self.screen.blit(name_surface, name_rect)
                 else:
-                    # 装备无效，显示空槽
-                    empty_text = self.font.render("空", True, (128, 128, 128))
-                    text_rect = empty_text.get_rect(center=(sx + sw//2, sy + sh//2))
-                    self.screen.blit(empty_text, text_rect)
+                    # 装备无效，显示空槽图标
+                    icon = self.equipment_icons.get(slot_type, "⚡")
+                    icon_surface = self.font.render(icon, True, (128, 128, 128))
+                    icon_rect = icon_surface.get_rect(center=(sx + sw//2, sy + sh//2))
+                    self.screen.blit(icon_surface, icon_rect)
             else:
-                # 绘制空槽提示
-                empty_text = self.font.render("空", True, (128, 128, 128))
-                text_rect = empty_text.get_rect(center=(sx + sw//2, sy + sh//2))
-                self.screen.blit(empty_text, text_rect)
+                # 绘制空槽图标
+                icon = self.equipment_icons.get(slot_type, "⚡")
+                icon_surface = self.font.render(icon, True, (128, 128, 128))
+                icon_rect = icon_surface.get_rect(center=(sx + sw//2, sy + sh//2))
+                self.screen.blit(icon_surface, icon_rect)
     
     def draw_inventory_items(self, player):
         """绘制背包物品"""
@@ -303,7 +393,24 @@ class InventoryUI:
         inv_title = self.font.render("物品:", True, self.text_color)
         self.screen.blit(inv_title, (self.inventory_start_x, self.inventory_start_y - 30))
         
-        for i, item in enumerate(player.inventory):
+        # 获取物品计数（用于叠加显示）
+        item_counts = {}
+        for item in player.inventory:
+            item_counts[item] = item_counts.get(item, 0) + 1
+        
+        # 创建显示列表，装备不叠加，消耗品叠加
+        display_items = []
+        seen_items = set()
+        for item in player.inventory:
+            # 装备类物品不叠加，每个都显示
+            if item.startswith("装备_"):
+                display_items.append(item)
+            # 消耗品叠加显示
+            elif item not in seen_items:
+                display_items.append(item)
+                seen_items.add(item)
+        
+        for i, item in enumerate(display_items):
             slot_x = self.inventory_start_x + (i % self.slots_per_row) * (self.slot_size + 5)
             slot_y = self.inventory_start_y + (i // self.slots_per_row) * (self.slot_size + 5)
             
@@ -313,22 +420,44 @@ class InventoryUI:
             
             # 绘制物品图标或名称
             if item.startswith("装备_"):
-                # 装备物品
-                item_text = "装"
-                text_color = (255, 255, 0)  # 金色
-            elif item == "Potion":
-                item_text = "药"
-                text_color = (255, 0, 0)  # 红色
+                # 装备物品 - 显示更清晰的名称
+                equipment_id = item[3:]  # 去掉"装备_"前缀
+                if equipment_id in self.equipment_list:
+                    equipment = self.equipment_list[equipment_id]
+                    # 根据装备类型显示不同图标
+                    if equipment.type == "weapon":
+                        item_text = "⚔"
+                    elif equipment.type == "armor":
+                        item_text = "🛡"
+                    elif equipment.type == "accessory":
+                        item_text = "💍"
+                    else:
+                        item_text = "⚡"
+                    text_color = (255, 215, 0)  # 金色
+                else:
+                    item_text = "?"
+                    text_color = (128, 128, 128)  # 灰色
+            elif item == "血瓶":
+                item_text = "Po"  # 保持原来的显示
+                text_color = (255, 100, 100)  # 红色
             elif item == "Gold":
-                item_text = "金"
+                item_text = "💰"
                 text_color = (255, 215, 0)  # 金色
             else:
                 item_text = item[:2]
                 text_color = self.text_color
             
+            # 绘制物品图标
             text_surface = self.font.render(item_text, True, text_color)
-            text_rect = text_surface.get_rect(center=(slot_x + self.slot_size//2, slot_y + self.slot_size//2))
+            text_rect = text_surface.get_rect(center=(slot_x + self.slot_size//2, slot_y + self.slot_size//2 - 5))
             self.screen.blit(text_surface, text_rect)
+            
+            # 绘制数量（只对消耗品显示）
+            count = item_counts[item]
+            if count > 1 and not item.startswith("装备_"):
+                count_text = self.font.render(f"x{count}", True, (255, 255, 255))
+                count_rect = count_text.get_rect(bottomright=(slot_x + self.slot_size - 2, slot_y + self.slot_size - 2))
+                self.screen.blit(count_text, count_rect)
     
     def draw_item_info(self, player):
         """绘制物品信息"""
@@ -344,8 +473,13 @@ class InventoryUI:
             else:
                 return
         # 处理背包物品选中的情况
-        elif self.selected_slot >= 0 and self.selected_slot < len(player.inventory):
-            item_name = player.inventory[self.selected_slot]
+        elif self.selected_slot >= 0:
+            display_items = self._get_display_items(player)
+            if self.selected_slot < len(display_items):
+                actual_index = self._get_actual_index(player, self.selected_slot)
+                item_name = player.inventory[actual_index]
+            else:
+                return
         else:
             return
         info_x = self.x + self.width - 150  # 固定在右侧
@@ -379,7 +513,7 @@ class InventoryUI:
             else:
                 info_lines.append(f"未知装备: {equipment_id}")  # 显示具体的装备ID用于调试
         
-        elif item_name == "Potion":
+        elif item_name == "血瓶":
             info_lines = ["血瓶", "恢复30点生命值", "", "按回车使用"]
         elif item_name == "Gold":
             info_lines = ["金币", "游戏货币"]
@@ -394,30 +528,126 @@ class InventoryUI:
     
     def drop_selected_item(self, player):
         """丢弃选中的物品"""
-        if 0 <= self.selected_slot < len(player.inventory):
-            item_name = player.inventory[self.selected_slot]
-            
-            # 移除物品
-            player.inventory.pop(self.selected_slot)
-            
-            # 调整选中槽位
-            if self.selected_slot >= len(player.inventory) and self.selected_slot > 0:
+        display_items = self._get_display_items(player)
+        if 0 <= self.selected_slot < len(display_items):
+            actual_index = self._get_actual_index(player, self.selected_slot)
+            item_name = player.inventory[actual_index]
+            player.inventory.pop(actual_index)
+            if self.selected_slot >= len(display_items) and self.selected_slot > 0:
                 self.selected_slot -= 1
-            
             return f"丢弃了 {item_name}"
         return None
     
     def destroy_selected_item(self, player):
         """摧毁选中的物品"""
-        if 0 <= self.selected_slot < len(player.inventory):
-            item_name = player.inventory[self.selected_slot]
-            
-            # 移除物品
-            player.inventory.pop(self.selected_slot)
-            
-            # 调整选中槽位
-            if self.selected_slot >= len(player.inventory) and self.selected_slot > 0:
+        display_items = self._get_display_items(player)
+        if 0 <= self.selected_slot < len(display_items):
+            actual_index = self._get_actual_index(player, self.selected_slot)
+            item_name = player.inventory[actual_index]
+            player.inventory.pop(actual_index)
+            if self.selected_slot >= len(display_items) and self.selected_slot > 0:
                 self.selected_slot -= 1
-            
             return f"摧毁了 {item_name}"
         return None
+
+    def handle_event(self, event, player):
+        """处理背包事件"""
+        result = self.handle_input(event, player)
+        if result == "close":
+            return "close"
+        
+        # 处理鼠标移动高亮
+        if event.type == pygame.MOUSEMOTION:
+            if self.is_open:
+                mx, my = event.pos
+                # 检查是否在背包区域内
+                if self.x <= mx <= self.x + self.width and self.y <= my <= self.y + self.height:
+                    # 检查是否在装备槽区域
+                    for slot_type, (sx, sy, sw, sh) in self.equipment_slots.items():
+                        if sx <= mx <= sx + sw and sy <= my <= sy + sh:
+                            self.selected_equipment_slot = slot_type
+                            return
+                    
+                    # 检查是否在背包物品区域
+                    for i in range(self.inventory_rows * self.slots_per_row):
+                        display_index = i  # 默认显示索引
+                        actual_index = self._get_actual_index(player, display_index)  # 获取实际索引
+                        
+                        slot_x = self.inventory_start_x + (i % self.slots_per_row) * (self.slot_size + 5)
+                        slot_y = self.inventory_start_y + (i // self.slots_per_row) * (self.slot_size + 5)
+                        
+                        if (slot_x <= mx <= slot_x + self.slot_size and 
+                            slot_y <= my <= slot_y + self.slot_size):
+                            self.selected_slot = actual_index  # 更新实际索引
+                            return
+                else:
+                    # 鼠标不在背包区域，取消所有选中
+                    self.selected_slot = 0
+                    self.selected_equipment_slot = None
+    
+    def update(self, player):
+        """更新背包状态"""
+        if not self.is_open:
+            return
+        
+        # 确保选中的槽位始终有效
+        if self.selected_slot >= len(player.inventory):
+            self.selected_slot = len(player.inventory) - 1
+        
+        # 更新装备槽的状态
+        if hasattr(player, 'equipped'):
+            for slot_type in self.equipment_slots.keys():
+                equipment_id = player.equipped.get(slot_type)
+                if equipment_id is None or equipment_id not in self.equipment_list:
+                    # 如果装备无效，自动卸下
+                    self.unequip_item(player, slot_type)
+        
+        # 自动选择第一个有效物品
+        if len(player.inventory) > 0 and self.selected_slot == -1:
+            self.selected_slot = 0
+        
+        # 确保背包物品的选中状态正确
+        display_items = self._get_display_items(player)
+        for i, item in enumerate(display_items):
+            actual_index = self._get_actual_index(player, i)
+            if actual_index != i:
+                # 如果实际索引和显示索引不一致，说明有叠加物品
+                if i == self.selected_slot:
+                    # 如果当前选中的是叠加的物品，更新为实际索引
+                    self.selected_slot = actual_index
+                    break
+        
+        # 更新物品信息框
+        if self.selected_slot >= 0 and self.selected_slot < len(player.inventory):
+            item_name = player.inventory[self.selected_slot]
+            if item_name.startswith("装备_"):
+                equipment_id = item_name[3:]  # 去掉 "装备_" 前缀
+                if equipment_id in self.equipment_list:
+                    equipment = self.equipment_list[equipment_id]
+                    # 确保装备的状态是有效的
+                    if not hasattr(equipment, 'name') or equipment.name == "":
+                        # 装备无效，自动卸下
+                        self.unequip_item(player, equipment.type)
+                        self.selected_slot = 0  # 重置选中槽位
+            else:
+                # 确保消耗品的状态是有效的
+                if item_name == "血瓶" and player.hp >= player.max_hp:
+                    # 生命值已满，血瓶无效
+                    self.selected_slot = 0
+                elif item_name == "Gold":
+                    # 金币始终有效
+                    pass
+                else:
+                    # 其他物品检查名称是否有效
+                    if item_name == "" or item_name is None:
+                        # 物品无效，移除
+                        player.inventory.pop(self.selected_slot)
+                        self.selected_slot = 0  # 重置选中槽位
+    
+    def reset_selection(self):
+        """重置选中状态"""
+        self.selected_slot = 0
+        self.selected_equipment_slot = None
+        
+        
+

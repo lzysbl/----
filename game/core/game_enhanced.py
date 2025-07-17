@@ -1,18 +1,23 @@
 import pygame
 import sys
-from map import GameMap
-from player import Player
-from enemy import Enemy
-from item import Item
-from hud import draw_hud, draw_game_info
-from battle import BattleSystem
-from game_state import GameState
-from font_manager import FontManager
-from skill_system import SkillSystem
-from equipment import EquipmentSystem, LootSystem
-from save_system import SaveSystem, GameMenu
-from inventory import InventoryUI
-from enemy_spawner import EnemySpawner
+import os
+
+# 添加当前目录到Python路径
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from utils.map import GameMap
+from entities.player import Player
+from entities.enemy import Enemy
+from entities.item import Item
+from ui.hud import draw_hud, draw_game_info
+from core.battle import BattleSystem
+from core.game_state import GameState
+from ui.font_manager import FontManager
+from systems.skill_system import SkillSystem
+from systems.equipment import EquipmentSystem, LootSystem
+from systems.save_system import SaveSystem, GameMenu
+from systems.inventory import InventoryUI
+from entities.enemy_spawner import EnemySpawner
 
 # 游戏配置
 SCREEN_WIDTH = 800
@@ -46,13 +51,12 @@ class Game:
         # 使用智能生成系统生成敌人
         self.enemies = EnemySpawner.spawn_enemies(self.game_map, count=2, player_pos=(self.player.x, self.player.y))
         
-        self.items = [
-            Item(name="Gold", x=200, y=200),
-            Item(name="Potion", x=400, y=300),
-            Item(name="Gold", x=600, y=150),
-            Item(name="Potion", x=300, y=450),
-            Item(name="Gold", x=500, y=350)
-        ]
+        # 生成物品到安全位置
+        self.items = []
+        item_types = ["Gold", "血瓶", "Gold", "血瓶", "Gold"]
+        for item_type in item_types:
+            item = Item.create_safe_item(item_type, self.game_map, self.items)
+            self.items.append(item)
         
         # 给玩家一些初始装备用于测试
         if not load_save:
@@ -60,8 +64,8 @@ class Game:
                 "装备_iron_sword", 
                 "装备_leather_armor", 
                 "装备_magic_ring",
-                "Potion", 
-                "Potion"
+                "血瓶", 
+                "血瓶"
             ])
         
         self.game_state = GameState()
@@ -136,13 +140,6 @@ class Game:
                     result = self.inventory_ui.handle_input(event, self.player)
                     if result and result != "close":
                         self.game_state.add_battle_message(result)
-                elif event.key == pygame.K_h:
-                    # H键使用血瓶
-                    if "Potion" in self.player.inventory and self.player.hp < self.player.max_hp:
-                        heal_amount = min(30, self.player.max_hp - self.player.hp)
-                        self.player.hp += heal_amount
-                        self.player.inventory.remove("Potion")
-                        self.game_state.add_battle_message("使用血瓶恢复生命！")
                 # 技能快捷键
                 elif event.key == pygame.K_q:
                     # Q键 - 火球术
@@ -197,6 +194,11 @@ class Game:
         
         # 更新玩家 - 传入game_map进行墙体碰撞检测
         self.player.update(self.game_map)
+        
+        # 处理玩家特殊输入（如使用物品）
+        special_input_result = self.player.handle_special_input()
+        if special_input_result:
+            self.game_state.add_battle_message(special_input_result)
         
         # 检查波次完成
         if self.game_state.check_wave_complete(self.enemies):

@@ -206,12 +206,12 @@ class LootSystem:
         gold_amount = random.randint(5, 20) * enemy_level
         loot.append({"type": "gold", "amount": gold_amount})
         
-        # 血瓶掉落
-        if random.random() < 0.4:  # 40%概率
-            loot.append({"type": "item", "name": "Potion"})
+        # 血瓶掉落 - 降低掉落率
+        if random.random() < 0.15:  # 15%概率（之前40%太高了）
+            loot.append({"type": "item", "name": "血瓶"})
         
-        # 装备掉落 - 大幅增加掉落率
-        equipment_drop_rate = 0.4 + (enemy_level * 0.1)  # 基础40%，每等级增加10%
+        # 装备掉落 - 调整掉落率，让装备更珍贵
+        equipment_drop_rate = 0.2 + (enemy_level * 0.05)  # 基础20%，每等级增加5%
         if random.random() < equipment_drop_rate:
             # 根据敌人等级确定可掉落的装备
             available_equipment = []

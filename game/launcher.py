@@ -51,51 +51,51 @@ def main():
         
         if choice == "1":
             print("\n启动增强版游戏...")
-            import game_enhanced
-            game_enhanced.Game().run()
+            from core.game_enhanced import Game
+            Game().run()
         elif choice == "2":
             print("\n启动标准版游戏...")
             import main
             main.main()
         elif choice == "3":
             print("\n启动按键测试...")
-            import test_h_key
+            from tests import test_h_key
             test_h_key.main()
         elif choice == "4":
             print("\n启动WASD移动测试...")
-            import test_wasd_movement
+            from tests import test_wasd_movement
             test_wasd_movement.test_wasd_movement()
         elif choice == "5":
             print("\n启动墙体碰撞测试...")
-            import test_wall_collision
+            from tests import test_wall_collision
             test_wall_collision.test_wall_collision()
         elif choice == "6":
             print("\n启动敌人行为测试...")
-            import test_enemy_behavior
+            from tests import test_enemy_behavior
             test_enemy_behavior.test_enemy_behavior()
         elif choice == "7":
             print("\n启动攻击间隔测试...")
-            import test_attack_interval
+            from tests import test_attack_interval
             test_attack_interval.test_attack_interval()
         elif choice == "8":
             print("\n启动完整功能测试...")
-            import test_full_features
+            from tests import test_full_features
             test_full_features.test_full_features()
         elif choice == "9":
             print("\n启动装备替换测试...")
-            import test_equipment_fix
+            from tests import test_equipment_fix
             test_equipment_fix.test_equipment_replacement()
         elif choice == "10":
             print("\n启动装备掉落测试...")
-            import test_drop_to_inventory
+            from tests import test_drop_to_inventory
             test_drop_to_inventory.test_equipment_drop_to_inventory()
         elif choice == "11":
             print("\n启动扩展装备测试...")
-            import test_expanded_equipment
+            from tests import test_expanded_equipment
             test_expanded_equipment.test_expanded_equipment()
         elif choice == "12":
             print("\n启动背包新功能测试...")
-            import test_inventory_new_features
+            from tests import test_inventory_new_features
             test_inventory_new_features.test_inventory_new_features()
         elif choice == "13":
             print("\n启动性能测试...")
@@ -104,8 +104,8 @@ def main():
             perf_test.main()
         else:
             print("无效选择，启动增强版游戏...")
-            import game_enhanced
-            game_enhanced.Game().run()
+            from core.game_enhanced import Game
+            Game().run()
             
     except KeyboardInterrupt:
         print("\n游戏已退出")
