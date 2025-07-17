@@ -1,31 +1,46 @@
 {
   "player": {
-    "x": 680,
-    "y": 240,
-    "hp": 200,
-    "max_hp": 220,
-    "mp": 180,
-    "max_mp": 180,
-    "level": 6,
-    "exp": 100,
-    "gold": 416,
-    "attack_power": 45,
+    "x": 752,
+    "y": 48,
+    "hp": 185,
+    "max_hp": 420,
+    "mp": 271,
+    "max_mp": 290,
+    "level": 15,
+    "exp": 1450,
+    "gold": 2865,
+    "attack_power": 90,
     "inventory": [
       "血瓶",
+      "血瓶",
+      "血瓶",
+      "血瓶",
+      "装备_basic_ring",
+      "血瓶",
+      "装备_basic_ring",
+      "装备_basic_ring",
+      "装备_leather_armor",
+      "血瓶",
+      "装备_leather_armor",
+      "装备_basic_ring",
+      "血瓶",
       "装备_iron_sword",
-      "装备_leather_armor"
+      "血瓶",
+      "血瓶",
+      "血瓶",
+      "装备_iron_sword"
     ],
     "equipped": {
-      "weapon": "iron_sword",
-      "armor": "leather_armor",
-      "accessory": "magic_ring"
+      "accessory": "magic_ring",
+      "armor": "chain_armor",
+      "weapon": "steel_sword"
     },
-    "base_defense": 0
+    "base_defense": 5
   },
   "game_state": {
-    "wave_number": 6,
-    "enemies_killed": 23,
+    "wave_number": 19,
+    "enemies_killed": 164,
     "state": "playing"
   },
-  "timestamp": 58640
+  "timestamp": 39009
 }
